@@ -28,7 +28,7 @@ class BugInfo:
         if self.assignee is not None:
             summary = self.linkify(self.assignee, '~') + " fixed " + self.linkify(self.title, 'bug')
         else:
-             summary = "We fixed " + self.linkify(self.title)
+             summary = "We fixed " + self.linkify(self.title, "bug")
 
         return summary
 
