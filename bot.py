@@ -49,8 +49,7 @@ class LaunchpadFetcher:
         # we are only interested in elementary bugs
         self.project = lp.projects[config.lp_project]
 
-        self.last_checked = datetime(2013, 1, 1, 1,1)
-#        self.last_checked = datetime.utcnow()
+        self.last_checked = datetime.utcnow()
 
         self.consumer = consumer
 
