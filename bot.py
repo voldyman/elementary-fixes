@@ -17,7 +17,10 @@ import twitter
 class BugInfo:
     def __init__(self, bug_title, bug_assignee_link, bug_url):
         self.title = bug_title
-        self.assignee= bug_assignee_link[31:] # only use the username part
+        if bug_assignee_link is not None:
+            self.assignee = bug_assignee_link[31:] # only use the username part
+        else:
+            self.assignee = None
         self.url = bug_url
 
     def get_summary(self):
@@ -38,19 +41,18 @@ class BugInfo:
             return link
 
 
-class LaunchpadFetcher(threading.Thread):
-    def __init__(self, queue):
-        threading.Thread.__init__(self)
-        # use this to send data
-        self.queue = queue
-
+class LaunchpadFetcher:
+    def __init__(self, consumer):
         # the API is stateless so loging in once is enough
         lp = Launchpad.login_anonymously(config.bot_name, "production", config.lp_cache_dir)
 
         # we are only interested in elementary bugs
         self.project = lp.projects[config.lp_project]
 
-        self.last_checked = datetime.utcnow()
+        self.last_checked = datetime(2013, 1, 1, 1,1)
+#        self.last_checked = datetime.utcnow()
+
+        self.consumer = consumer
 
     def fetch(self):
         bugs = self.project.searchTasks(status=config.bug_type)
@@ -66,50 +68,46 @@ class LaunchpadFetcher(threading.Thread):
 
                 bug_info_obj = BugInfo(bug_title, bug_assignee_link, bug_url)
 
-                # put it on the queue
-                self.queue.put(bug_info_obj)
+                # send it to the consumer
+                self.consumer.send(bug_info_obj)
+
 
     def run(self):
         while True:
             try:
-                print "Fetching"
+                print "Fetching " + str(datetime.now())
                 self.fetch()
 
                 time.sleep(config.sleep_time)
 
                 self.last_checked = datetime.utcnow()
-            except:
-                self.queue.put(None)
+            except Exception, e:
+                print "Error occured"
+                print e
                 break
 
+
 class TwitterUpdater:
-    def __init__(self, queue):
+    def __init__(self):
         self.twitter_api = twitter.Api(consumer_key = config.consumer_key,
                                        consumer_secret = config.consumer_secret,
                                        access_token_key = config.access_token_key,
                                        access_token_secret = config.access_token_secret)
-
-        self.queue = queue
-
-    def poll(self):
+            
+    def consumer(self):
         while True:
-            obj = self.queue.get()
-
-            if obj is None:
-                break
-
-            print("Tweeting about bug " + obj.title)
-            self.twitter_api.PostUpdate(obj.get_summary())
+            bug = yield
+            if bug is not None:
+                print "Tweeting about bug " + bug.title + " at time " + str(datetime.now())
+                self.twitter_api.PostUpdate(bug.get_summary())
 
 def main():
-    # make a queue for communication
-    queue = Queue()
+    tweeter = TwitterUpdater().consumer()
+    tweeter.send(None)
+    
+    fetcher = LaunchpadFetcher(tweeter)
 
-    fetcher = LaunchpadFetcher(queue)
-    tweeter = TwitterUpdater(queue)
-
-    fetcher.start()
-    tweeter.poll()
+    fetcher.run()
 
 if __name__ == "__main__":
     main()
