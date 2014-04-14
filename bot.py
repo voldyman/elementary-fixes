@@ -49,17 +49,17 @@ class LaunchpadFetcher:
         # we are only interested in elementary bugs
         self.project = lp.projects[config.lp_project]
 
-        self.last_checked = datetime.utcnow()
+        self.last_checked = datetime(2013,1,1) #datetime.utcnow()
 
         self.consumer = consumer
 
     def fetch(self):
-        bugs = self.project.searchTasks(status=config.bug_type)
-
+        print "Searching for bugs after " + str(self.last_checked)
+        bugs = self.project.searchTasks(modified_since=self.last_checked)
+        
         for bug in bugs:
-            release_date = bug.date_fix_released.replace(tzinfo=None)
-
-            if release_date > self.last_checked:
+            print bug.status
+            if bug.status == 'Fix Released' or bug.status == 'Fix Committed':
                 # Get the required details
                 bug_title = bug.title
                 bug_url = bug.bug_link
