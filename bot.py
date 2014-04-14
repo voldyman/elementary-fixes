@@ -49,7 +49,7 @@ class LaunchpadFetcher:
         # we are only interested in elementary bugs
         self.project = lp.projects[config.lp_project]
 
-        self.last_checked = datetime(2013,1,1) #datetime.utcnow()
+        self.last_checked = datetime.utcnow()
 
         self.consumer = consumer
 
@@ -58,7 +58,6 @@ class LaunchpadFetcher:
         bugs = self.project.searchTasks(modified_since=self.last_checked)
         
         for bug in bugs:
-            print bug.status
             if bug.status == 'Fix Released' or bug.status == 'Fix Committed':
                 # Get the required details
                 bug_title = bug.title
